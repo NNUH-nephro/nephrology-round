@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Nephrology Round Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky header with date + tabs, single column of patient rows, full-screen patient sheet */
+:root{
+  --bg:#f3f6f7; --surface:#ffffff; --sunk:#e8eef0; --line:#d3dde0; --fg:#14262c; --muted:#5a6f76;
+  --accent:#0d6e7a; --accent-ink:#ffffff; --accent-soft:#d9eef0;
+  --red:#b42318; --red-soft:#fde7e4; --amber:#a15c00; --amber-soft:#fdf0d8; --green:#1d7a45; --green-soft:#dff3e6;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1719; --surface:#152226; --sunk:#0b1315; --line:#24363b; --fg:#e3eef0; --muted:#8fa6ad;
+  --accent:#4fb8c4; --accent-ink:#06191c; --accent-soft:#16363b;
+  --red:#ff8a7a; --red-soft:#3a1714; --amber:#f2b453; --amber-soft:#35260d; --green:#6fd39a; --green-soft:#12301f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1719; --surface:#152226; --sunk:#0b1315; --line:#24363b; --fg:#e3eef0; --muted:#8fa6ad;
+  --accent:#4fb8c4; --accent-ink:#06191c; --accent-soft:#16363b;
+  --red:#ff8a7a; --red-soft:#3a1714; --amber:#f2b453; --amber-soft:#35260d; --green:#6fd39a; --green-soft:#12301f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:10px;padding-block:10px;flex-wrap:wrap}
+.brand{font-weight:700;letter-spacing:-.01em;font-size:16px;margin-right:auto;display:flex;align-items:center;gap:8px}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block}
+.datenav{display:flex;align-items:center;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.datenav button{background:none;border:0;padding:6px 11px;color:var(--muted)}
+.datenav button:hover{background:var(--sunk)}
+.datenav .d{font-family:var(--f-mono);font-size:13px;padding:6px 6px;min-width:118px;text-align:center;color:var(--fg)}
+.today-btn{font-size:12px;border:1px solid var(--line);background:none;border-radius:999px;padding:5px 10px;color:var(--accent)}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:0}
+.tab{background:none;border:0;padding:9px 12px;border-bottom:2px solid transparent;color:var(--muted);font-weight:600;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab .n{font-family:var(--f-mono);font-size:12px;margin-left:5px;padding:1px 6px;border-radius:999px;background:var(--sunk)}
+.tab.alert .n{background:var(--red);color:var(--surface)}
+main{padding-block:14px 120px;display:grid;gap:12px}
+.summary{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.summary b{font-family:var(--f-mono);color:var(--fg);font-weight:600}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--red)}
+.btn.sm{padding:5px 9px;font-size:13px}
+.search{flex:1;min-width:150px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface)}
+.banner{border-radius:var(--r);padding:10px 12px;background:var(--red-soft);color:var(--red);font-size:14px}
+.banner b{font-weight:700}
+.banner ul{margin:6px 0 0;padding-left:18px}
+.list{display:grid;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px 11px 15px;position:relative;text-align:left;width:100%;display:grid;gap:6px}
+.card::before{content:"";position:absolute;left:0;top:10px;bottom:10px;z-index:1;width:4px;border-radius:0 3px 3px 0;background:transparent}
+.card.lv-red::before{background:var(--red)} .card.lv-amber::before{background:var(--amber)}
+.card.lv-red{background:var(--red-soft);border-color:var(--red)} .card.lv-amber{background:var(--amber-soft);border-color:var(--amber)}
+.flags{display:grid;gap:6px}
+.fitem{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.fitem.red{border-color:var(--red);background:var(--red-soft)} .fitem.amber{border-color:var(--amber);background:var(--amber-soft)}
+.fitem .search{flex:1;min-width:160px}
+.fitem .ft{flex:1;min-width:150px;font-weight:600;overflow-wrap:anywhere}
+.fitem.red .ft{color:var(--red)} .fitem.amber .ft{color:var(--amber)}
+.fitem .fm{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.fitem.closed{opacity:.6} .fitem.closed .ft{text-decoration:line-through;color:var(--muted)}
+.fadd{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fadd input{flex:1;min-width:180px;border:1px solid var(--line);border-radius:7px;padding:8px 9px;background:var(--bg)}
+.flagtxt.amber{color:var(--amber)} .flagtxt.red{color:var(--red)}
+.card:hover{border-color:var(--accent)}
+.ctop{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.bed{font-family:var(--f-mono);font-weight:600;font-size:13px;background:var(--sunk);padding:1px 7px;border-radius:5px}
+.pname{font-weight:700}
+.mrn{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.chips{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap;letter-spacing:.01em}
+.chip.hd-due{background:var(--amber-soft);color:var(--amber)}
+.chip.hd-done{background:var(--green-soft);color:var(--green)}
+.chip.hd-miss{background:var(--red-soft);color:var(--red)}
+.chip.hd-hold{background:var(--sunk);color:var(--muted);text-decoration:line-through}
+.chip.cons{background:var(--accent-soft);color:var(--accent)}
+.chip.rev{background:var(--green-soft);color:var(--green)}
+.chip.norev{background:var(--sunk);color:var(--muted)}
+.prob{font-size:14px;color:var(--fg);min-width:0}
+.prob span{color:var(--muted)}
+.flagtxt{font-size:14px;font-weight:600;min-width:0}
+.lv-red .flagtxt{color:var(--red)} .lv-amber .flagtxt{color:var(--amber)}
+.labline{font-family:var(--f-mono);font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--muted)}
+.labline .crit{color:var(--red);font-weight:600} .labline .abn{color:var(--amber)}
+.nonote{font-size:12.5px;color:var(--muted);font-style:italic}
+.hdrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;flex-wrap:wrap}
+.hdrow .who{flex:1;min-width:160px;display:grid;gap:2px}
+.hdrow .acc{font-size:13px;color:var(--muted)}
+.hdrow.done{opacity:.72}
+.hdrow.miss{border-color:var(--red)}
+.tick{display:flex;align-items:center;gap:6px;font-weight:600;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--surface)}
+.tick input{width:18px;height:18px;accent-color:var(--green)}
+h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:8px 0 0;font-weight:700}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:22px 16px;text-align:center;color:var(--muted);display:grid;gap:10px;justify-items:center}
+.empty strong{color:var(--fg)}
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px)}
+.shead{position:sticky;top:0;z-index:2;background:var(--surface);border-bottom:1px solid var(--line)}
+.shead .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
+.shead .t{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbody{padding-block:14px 120px;display:grid;gap:14px}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;gap:10px}
+.sec h3{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+label.f{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600;min-width:0}
+label.f input,label.f select,label.f textarea{border:1px solid var(--line);border-radius:7px;padding:8px 9px;background:var(--bg);color:var(--fg);font-weight:400;font-size:15px;width:100%}
+textarea{resize:vertical;min-height:70px}
+.days{display:flex;gap:5px;flex-wrap:wrap}
+.days label{display:flex}
+.days input{position:absolute;opacity:0;pointer-events:none}
+.days span{border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:13px;font-weight:600;color:var(--muted)}
+.days input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.days input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.labs{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:8px}
+.lab{display:grid;gap:2px;font-size:12px;color:var(--muted);font-weight:600}
+.lab input{font-family:var(--f-mono);border:1px solid var(--line);border-radius:7px;padding:7px 8px;background:var(--bg);width:100%;font-size:15px}
+.lab.crit input{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+.lab.abn input{border-color:var(--amber)}
+.lab small{font-family:var(--f-mono);font-weight:400;font-size:11px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:fit-content;max-width:100%;flex-wrap:wrap}
+.seg label{display:flex}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{padding:7px 12px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.seg input:checked+span{background:var(--sunk);color:var(--fg)}
+.seg .r input:checked+span{background:var(--red-soft);color:var(--red)}
+.seg .a input:checked+span{background:var(--amber-soft);color:var(--amber)}
+.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:-2px}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:3;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.savebar .wrap{display:flex;gap:8px;align-items:center;padding-block:10px;flex-wrap:wrap}
+.savebar .msg{flex:1;font-size:13px;color:var(--muted);min-width:120px}
+.hist{display:grid;gap:8px}
+.hitem{border-top:1px solid var(--line);padding-top:8px;display:grid;gap:4px;font-size:14px}
+.hitem .hd{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:14px;z-index:40}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.hdband{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-11px -12px 2px -15px;padding:7px 12px 7px 15px;border-radius:var(--r) var(--r) 0 0;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;background:var(--green);color:var(--surface)}
+.hdband.done{background:var(--green-soft);color:var(--green)}
+.hdband.miss{background:var(--red);color:var(--surface)}
+.hdband.hold{background:var(--sunk);color:var(--muted)}
+.card.hdtoday{border-color:var(--green);border-width:2px}
+.dline{display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--muted)}
+.dp{font-family:var(--f-mono);font-size:11.5px;padding:1px 6px;border-radius:5px;background:var(--sunk);color:var(--muted)}
+.dp.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.dp.on.today{background:var(--green);color:var(--surface);font-weight:700}
+.days .today span{border-width:2px;border-color:var(--accent)}
+.bag{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.25);vertical-align:middle}
+.bag.yellow{background:#f2c418}.bag.green{background:#2fa356}.bag.red{background:#d8362f}.bag.purple{background:#8150c4}.bag.none{background:transparent;border-style:dashed}
+.pdrx{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.pdrx b{color:var(--fg);font-family:var(--f-mono)}
+.slots{display:grid;gap:8px}
+.slot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.slot .sl{min-width:84px;font-weight:600}
+.sw{display:flex}.sw input{position:absolute;opacity:0;pointer-events:none}
+.sw span{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:999px;padding:4px 9px 4px 6px;font-weight:600;color:var(--muted)}
+.sw input:checked+span{border-color:var(--fg);color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.sw input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.hdrow.pd{border-left:4px solid var(--accent)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.lg{width:12px;height:12px;border-radius:3px;display:inline-block}
+.lg.today{background:var(--green)}.lg.unset{background:var(--amber)}.lg.off{background:var(--muted)}
+.hdrow{border-left-width:5px}
+.hdrow.c-today{background:var(--green-soft);border-color:var(--green)}
+.hdrow.c-miss{background:var(--red-soft);border-color:var(--red)}
+.hdrow.c-unset{background:var(--amber-soft);border-color:var(--amber)}
+.hdrow.c-off,.hdrow.c-hold{background:var(--sunk);border-color:var(--line);border-left-color:var(--muted)}
+.hdrow.c-off .pname,.hdrow.c-hold .pname{color:var(--muted)!important}
+.stat{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:999px}
+.c-today .stat{background:var(--green);color:var(--surface)}
+.c-miss .stat{background:var(--red);color:var(--surface)}
+.c-unset .stat{background:var(--amber);color:var(--surface)}
+.c-off .stat,.c-hold .stat{background:var(--line);color:var(--muted)}
+.hdband.unset{background:var(--amber);color:var(--surface)}
+.teambtn{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 11px 5px 9px;font-size:13px;font-weight:600;color:var(--accent);max-width:100%;min-width:0}
+.teambtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.teambtn.empty{color:var(--amber);border-color:var(--amber)}
+.teampanel{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;padding-block:4px 12px}
+.dcols{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+.dcol{display:grid;gap:10px;min-width:0;align-content:start}
+.dcol+.dcol{border-left:2px solid var(--line);padding-left:16px}
+.dhead{font-weight:700;font-size:15px;padding-bottom:6px;border-bottom:3px solid var(--green)}
+.dhead.pdh{border-bottom-color:var(--accent)}
+@media (max-width:760px){.dcols{grid-template-columns:1fr}.dcol+.dcol{border-left:0;padding-left:0;border-top:2px solid var(--line);padding-top:14px}}
+.ro{font-size:13px;color:var(--amber);background:var(--amber-soft);padding:8px 10px;border-radius:8px}
+@media (prefers-reduced-motion:no-preference){.card,.btn{transition:border-color .15s}}
+</style>
+<style>
+body{margin:0}[hidden]{display:none!important}img{max-width:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.login{position:fixed;inset:0;z-index:50;background:var(--bg);display:grid;place-items:center;padding:16px}
+.loginbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;max-width:360px;display:grid;gap:12px;text-align:center;justify-items:center}
+.loginbox p{margin:0;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="hrow">
+      <div class="brand"><i></i>Nephrology Round Board</div>
+      <button class="teambtn" data-act="team" aria-label="Today's attending and fellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21a8 8 0 0 1 16 0"/><path d="M15 15l2 2 4-4"/></svg><span id="teamLbl">Set team</span></button>
+      <button class="today-btn" id="todayBtn" data-act="today" hidden>Today</button>
+      <div class="datenav">
+        <button data-act="prev" aria-label="Previous day">‹</button>
+        <span class="d" id="dateLbl"></span>
+        <button data-act="next" aria-label="Next day">›</button>
+      </div>
+    </div>
+    <form class="teampanel" id="teamPanel" hidden>
+      <label class="f">Attending physician<input id="team_att" autocomplete="off" placeholder="e.g. Dr. Ahmad"></label>
+      <label class="f">Fellow<input id="team_fel" autocomplete="off" placeholder="e.g. Dr. Lina"></label>
+      <div class="bar"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-act="teamClose">Cancel</button></div>
+    </form>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>
+</header>
+<main class="wrap" id="main">
+  <div class="empty"><strong>Loading the ward list…</strong><span>Inpatients, consults and today's dialysis list will appear here.</span></div>
+</main>
+<div id="sheetRoot"></div>
+<div id="toastRoot"></div>
+
+
+<div id="login" class="login" hidden>
+  <div class="loginbox">
+    <div class="brand"><i></i>Nephrology Round Board</div>
+    <p>Sign in with the Google account your team lead added to the board.</p>
+    <button class="btn primary" id="loginBtn" type="button">Sign in with Google</button>
+    <p class="hint" id="loginMsg"></p>
+  </div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== Firebase project: nephrology-e72a3 ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAv9GMyf8TJ4UEPQrwqT7uEfMOcEyrc6Ho",
+  authDomain: "nephrology-e72a3.firebaseapp.com",
+  projectId: "nephrology-e72a3",
+  storageBucket: "nephrology-e72a3.firebasestorage.app",
+  messagingSenderId: "484705206765",
+  appId: "1:484705206765:web:d24c2067af35410478a7e4"
+};
+/* ===== nothing else to edit below ===== */
+(function(){
+  const login=document.getElementById('login'),msg=document.getElementById('loginMsg');
+  if(String(firebaseConfig.apiKey).includes('PASTE')){login.hidden=false;document.getElementById('loginBtn').hidden=true;msg.textContent='Setup not finished: paste the Firebase config into index.html.';window.claude={use:()=>new Promise(()=>{})};return}
+  firebase.initializeApp(firebaseConfig);
+  const fdb=firebase.firestore();
+  fdb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  const auth=firebase.auth();
+  let ready;const readyP=new Promise(r=>ready=r);
+  auth.getRedirectResult().catch(e=>{msg.textContent='Sign-in failed: '+(e.message||e.code)});
+  auth.onAuthStateChanged(u=>{
+    if(u){login.hidden=true;ready(u);addSignOut(u)}
+    else{login.hidden=false}
+  });
+  document.getElementById('loginBtn').addEventListener('click',async()=>{
+    const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+    try{await auth.signInWithPopup(prov)}catch(e){
+      if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'||e.code==='auth/cancelled-popup-request')auth.signInWithRedirect(prov);
+      else if(e.code!=='auth/popup-closed-by-user')msg.textContent='Sign-in failed: '+(e.message||e.code)}
+  });
+  function addSignOut(u){
+    if(document.getElementById('signOut'))return;
+    const b=document.createElement('button');b.id='signOut';b.className='today-btn';b.type='button';
+    b.textContent='Sign out';b.title=u.email||'';b.onclick=()=>auth.signOut().then(()=>location.reload());
+    document.querySelector('.hrow').appendChild(b);
+  }
+  window.RRB_ME=()=>auth.currentUser&&(auth.currentUser.displayName||auth.currentUser.email);
+  window.claude={use:async name=>{const u=await readyP;
+    if(name==='db')return fdb;
+    if(name==='user')return {id:async()=>u.uid,can:async()=>null,profiles:async()=>({})};
+    return null}};
+})();
+</script>
+<script>
+(function(){
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const LABS=[
+ {k:'na',l:'Na',u:'mmol/L',lo:135,hi:145,clo:125,chi:155},
+ {k:'k',l:'K',u:'mmol/L',lo:3.5,hi:5.0,clo:3.0,chi:6.0},
+ {k:'hco3',l:'HCO₃',u:'mmol/L',lo:22,hi:28,clo:15},
+ {k:'bun',l:'BUN',u:'mg/dL',lo:7,hi:20},
+ {k:'cr',l:'Cr',u:'mg/dL',lo:0.6,hi:1.2},
+ {k:'hb',l:'Hb',u:'g/dL',lo:12,hi:16,clo:7},
+ {k:'ca',l:'Ca',u:'mg/dL',lo:8.5,hi:10.5,clo:7,chi:12},
+ {k:'phos',l:'Phos',u:'mg/dL',lo:2.5,hi:4.5,chi:8},
+];
+const BAGS=[['yellow','Yellow'],['green','Green'],['red','Red'],['purple','Purple']];
+const PDF={'1':'1 exchange/day','2':'2 exchanges/day','3':'3 exchanges/day','4':'4 exchanges/day','5':'5 exchanges/day','APD':'APD (nightly cycler)'};
+function pdSlotsN(f){return f==='APD'?1:(+f||0)}
+function pdSlotName(f,i){return f==='APD'?'Night bags':'Exchange '+(i+1)}
+function pdRx(p){const pd=p.pd||{};if(!pd.freq)return '<span>No PD prescription yet</span>';
+  return `<b>${esc(pd.freq==='APD'?'APD nightly':pd.freq+'×/day')}</b>${(pd.bags||[]).map(c=>`<span class="bag ${esc(c||'none')}" title="${esc(c||'not set')}"></span>`).join('')}${pd.note?' · '+esc(pd.note):''}`}
+function slotsHtml(f,bags,dis){const n=pdSlotsN(f);if(!n)return '<p class="hint">Choose the frequency first.</p>';
+  return Array.from({length:n},(_,i)=>`<div class="slot"><span class="sl">${pdSlotName(f,i)}</span>${BAGS.map(([k,l])=>`<label class="sw"><input type="radio" name="bag${i}" value="${k}" ${(bags[i]||'')===k?'checked':''} ${dis}><span><i class="bag ${k}"></i>${l}</span></label>`).join('')}</div>`).join('')}
+const MOD={none:'No RRT',HD:'Intermittent HD',SLED:'SLED',CRRT:'CRRT',PD:'PD'};
+const S={db:null,user:null,uid:null,ro:false,patients:[],pLoaded:false,notes:{},date:todayStr(),tab:'dialysis',q:'',open:null,editNote:null,team:{},lastTeam:{},unsubTeam:null,hist:[],names:{},unsubNotes:null,confirmDis:false};
+
+function todayStr(){return new Date().toLocaleDateString('en-CA')}
+function shift(d,n){const t=new Date(d+'T12:00:00');t.setDate(t.getDate()+n);return t.toLocaleDateString('en-CA')}
+function dow(d){return new Date(d+'T12:00:00').getDay()}
+function fmtDate(d){const t=new Date(d+'T12:00:00');return DOW[t.getDay()]+' '+t.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function lines(t){return String(t||'').split('\n').map(s=>s.trim()).filter(Boolean)}
+function nkey(pid,d){return pid+'_'+d}
+function note(pid,d){return S.notes[nkey(pid,d)]||null}
+function labLevel(def,v){if(v===''||v==null||isNaN(+v))return '';v=+v;
+  if((def.clo!=null&&v<def.clo)||(def.chi!=null&&v>def.chi))return 'crit';
+  if((def.lo!=null&&v<def.lo)||(def.hi!=null&&v>def.hi))return 'abn';return ''}
+function natCmp(a,b){return String(a.bed||'').localeCompare(String(b.bed||''),undefined,{numeric:true})||String(a.name||'').localeCompare(String(b.name||''))}
+
+// Dialysis status for patient p on date d
+function hdInfo(p,d){
+  const n=note(p.id,d)||{};const plan=n.hdPlan||'auto';
+  const continuous=p.modality==='CRRT'||p.modality==='PD';
+  const scheduled=(p.modality==='HD'||p.modality==='SLED')&&(p.hdDays||[]).includes(dow(d));
+  let due=false,kind='';
+  if(plan==='hold'&&(scheduled||continuous))return {due:false,held:true,scheduled,continuous,n};
+  if(plan==='extra'){due=true;kind='Extra session'}
+  else if(scheduled){due=true;kind='Scheduled'}
+  else if(continuous){due=true;kind='Ongoing '+p.modality}
+  const done=!!n.hdDone;
+  const past=d<todayStr();
+  return {due,kind,done,held:false,miss:due&&!done&&past&&!continuous,scheduled,continuous,n};
+}
+
+function openFlags(p){return (p.flags||[]).filter(f=>!f.done)}
+function flagLv(p){const o=openFlags(p);return o.some(f=>f.level==='red')?'red':o.some(f=>f.level==='amber')?'amber':''}
+function active(){return S.patients.filter(p=>p.active!==false).sort((a,b)=>flagRank(b)-flagRank(a)||natCmp(a,b))}
+function flagRank(p){const l=flagLv(p);return l==='red'?2:l==='amber'?1:0}
+function matchQ(p){if(!S.q)return true;const q=S.q.toLowerCase();return [p.name,p.bed,p.primary,p.service].some(x=>String(x||'').toLowerCase().includes(q))}
+
+/* ---------- render ---------- */
+function renderHeader(){
+  document.getElementById('dateLbl').textContent=fmtDate(S.date)+(S.date===todayStr()?' · today':'');
+  document.getElementById('todayBtn').hidden=S.date===todayStr();
+  const tb=document.querySelector('.teambtn');const t=S.team||{};
+  document.getElementById('teamLbl').textContent=(t.attending||t.fellow)?[t.attending&&'Att: '+t.attending,t.fellow&&'Fellow: '+t.fellow].filter(Boolean).join(' · '):'Set today\'s team';
+  tb.classList.toggle('empty',!(t.attending||t.fellow));
+  const act=active();
+  const hdDue=act.filter(p=>p.modality!=='PD'&&hdInfo(p,S.date).due);
+  const pending=hdDue.filter(p=>{const h=hdInfo(p,S.date);return !h.done&&!h.continuous}).length;
+  const missedPrev=missedYesterday().length;
+  const tabs=[
+    ['dialysis','Dialysis',hdDue.length+(hdDue.length?(' · '+pending+' left'):''),pending>0||missedPrev>0],
+    ['inpatient','Inpatients',act.filter(p=>p.kind!=='consult').length],
+    ['consult','Consults',act.filter(p=>p.kind==='consult').length],
+    ['archive','Archive',S.patients.filter(p=>p.active===false).length],
+  ];
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l,n,al])=>`<button class="tab${al?' alert':''}" role="tab" aria-selected="${S.tab===k}" data-act="tab" data-v="${k}">${l}<span class="n">${n}</span></button>`).join('');
+}
+function missedYesterday(){
+  const y=shift(S.date,-1);
+  return active().filter(p=>{const h=hdInfo(p,y);return h.due&&!h.done&&!h.continuous})
+}
+
+function renderMain(){
+  renderHeader();
+  const m=document.getElementById('main');
+  if(!S.db){m.innerHTML=`<div class="empty"><strong>Shared storage is not available in this view.</strong><span>Open the board from its claude.ai link while signed in to see and edit the team's patient list.</span></div>`;return}
+  if(!S.pLoaded)return;
+  if(S.denied){m.innerHTML=`<div class="empty"><strong>Your account is not on the team list.</strong><span>Ask the board owner to add your email, then reload this page.</span></div>`;return}
+  const act=active();
+  const ro=S.ro?`<div class="ro">You can view this board but not edit it. Ask the owner for Contributor access.</div>`:'';
+  const summary=`<div class="summary"><span><b>${act.filter(p=>p.kind!=='consult').length}</b> inpatients</span><span><b>${act.filter(p=>p.kind==='consult').length}</b> consults</span><span><b>${act.filter(p=>flagLv(p)==='red').length}</b> urgent</span><span><b>${act.filter(p=>flagLv(p)==='amber').length}</b> watch</span></div>`;
+  const tools=`<div class="bar"><input class="search" id="q" type="search" placeholder="Search name, bed or problem" value="${esc(S.q)}">${S.ro?'':'<button class="btn primary" data-act="add">+ Add patient</button>'}<button class="btn" data-act="copy">Copy round list</button></div>`;
+  if(!act.length&&S.tab!=='archive'){
+    m.innerHTML=ro+`<div class="empty"><strong>No patients on the board yet.</strong><span>Add each inpatient and consult once with their bed, problem list and dialysis days. The dialysis list then builds itself every day.</span>${S.ro?'':'<button class="btn primary" data-act="add">+ Add first patient</button>'}</div>`;return}
+  let body='';
+  if(S.tab==='dialysis')body=`<div class="dcols"><section class="dcol"><div class="dhead hd">Haemodialysis</div>${renderDialysis(act,'hd')}</section><section class="dcol"><div class="dhead pdh">Peritoneal dialysis</div>${renderDialysis(act,'pd')}</section></div>`;
+  else if(S.tab==='archive'){
+    const ar=S.patients.filter(p=>p.active===false).filter(matchQ).sort((a,b)=>String(b.dischargedAt||'').localeCompare(String(a.dischargedAt||'')));
+    body=`<h2>Discharged and signed-off patients</h2>`+(ar.length?`<div class="list">${ar.map(card).join('')}</div>`:`<div class="empty"><span>${S.q?'No archived patients match this search.':'Discharged patients and signed-off consults are kept here with all their notes.'}</span></div>`);
+  }
+  else{
+    const ps=act.filter(p=>(S.tab==='consult')===(p.kind==='consult')).filter(matchQ);
+    body=ps.length?`<div class="list">${ps.map(card).join('')}</div>`:`<div class="empty"><span>No ${S.tab==='consult'?'consults':'inpatients'}${S.q?' match this search':' right now'}.</span></div>`;
+  }
+  const qHadFocus=document.activeElement&&document.activeElement.id==='q';const pos=qHadFocus?document.activeElement.selectionStart:null;
+  m.innerHTML=ro+summary+tools+body;
+  if(qHadFocus){const q=document.getElementById('q');q.focus();try{q.setSelectionRange(pos,pos)}catch(e){}}
+}
+
+function renderDialysis(act,mode){
+  if(mode==='pd'){const rows=act.map(p=>({p,h:hdInfo(p,S.date)})).filter(x=>matchQ(x.p));const pdRows=rows.filter(x=>x.p.modality==='PD');let out='';
+  out+=`<h2>${pdRows.length} patient${pdRows.length===1?'':'s'}</h2>`+(pdRows.length?`<div class="list">${pdRows.map(({p,h})=>`<div class="hdrow pd"><div class="who"><div class="ctop"><span class="bed">${esc(p.bed||'—')}</span><a href="#" class="pname" data-act="open" data-id="${p.id}" style="color:inherit">${esc(p.name)}</a>${p.kind==='consult'?'<span class="chip cons">Consult</span>':'<span class="chip">Inpatient</span>'}${h.held?'<span class="chip hd-hold">PD held</span>':''}</div><div class="pdrx">${pdRx(p)}</div>${openFlags(p).map(f=>`<div class="flagtxt ${f.level}" style="font-size:13px">⚑ ${esc(f.text)}</div>`).join('')}</div></div>`).join('')}</div>`:`<div class="empty"><span>No PD patients on the board.</span></div>`);
+  return out}
+  const miss=missedYesterday();
+  const y=shift(S.date,-1);
+  let out='';
+  if(miss.length)out+=`<div class="banner"><b>${miss.length} session${miss.length>1?'s':''} on ${fmtDate(y)} not confirmed done.</b> Check these patients were dialysed, or mark the session held with a reason.<ul>${miss.map(p=>`<li><a href="#" data-act="open" data-id="${p.id}" style="color:inherit">${esc(p.bed?p.bed+' · ':'')}${esc(p.name)}</a></li>`).join('')}</ul></div>`;
+  const rows=act.map(p=>({p,h:hdInfo(p,S.date)})).filter(x=>matchQ(x.p));
+  const pdRows=rows.filter(x=>x.p.modality==='PD');
+  const isHD=p=>['HD','SLED','CRRT'].includes(p.modality);
+  const hdRows=rows.filter(x=>x.p.modality!=='PD'&&(isHD(x.p)||x.h.due||x.h.held)).map(x=>{
+    const p=x.p,h=x.h;let c;
+    if(h.held)c='hold';
+    else if(h.due)c=h.miss?'miss':'today';
+    else if((p.modality==='HD'||p.modality==='SLED')&&!(p.hdDays||[]).length)c='unset';
+    else c='off';
+    return {...x,c}});
+  const order={miss:0,today:1,unset:2,hold:3,off:4};
+  hdRows.sort((a,b)=>order[a.c]-order[b.c]||(a.h.done-b.h.done)||natCmp(a.p,b.p));
+  const nToday=hdRows.filter(x=>x.c==='today'||x.c==='miss');
+  const lbl={today:'Dialysis today',miss:'Not confirmed',unset:'Schedule not set',off:'Not today',hold:'Held today'};
+  out+=`<h2>${nToday.filter(x=>x.h.done).length}/${nToday.length} done today</h2>
+  <div class="legend"><span><i class="lg today"></i>Today</span><span><i class="lg unset"></i>Schedule not set — decide</span><span><i class="lg off"></i>Not today</span></div>`;
+  out+=hdRows.length?`<div class="list">${hdRows.map(({p,h,c})=>{
+    const days=(p.hdDays||[]).length?[6,0,1,2,3,4,5].filter(i=>p.hdDays.includes(i)).map(i=>`<span class="dp on${i===dow(S.date)?' today':''}">${DOW[i]}</span>`).join(''):'';
+    return `<div class="hdrow c-${c}${h.done?' done':''}">
+      <div class="who"><div class="ctop"><span class="bed">${esc(p.bed||'—')}</span><a href="#" class="pname" data-act="open" data-id="${p.id}" style="color:inherit">${esc(p.name)}</a>${p.kind==='consult'?'<span class="chip cons">Consult</span>':'<span class="chip">Inpatient</span>'}<span class="stat">${lbl[c]}${h.kind==='Extra session'?' · extra':''}</span></div>
+      <div class="acc dline">${esc(MOD[p.modality]||'Extra session')}${p.access?' · '+esc(p.access):''} ${days}${h.n&&h.n.hdNote?' · '+esc(h.n.hdNote):''}</div>${openFlags(p).map(f=>`<div class="flagtxt ${f.level}" style="font-size:13px">⚑ ${esc(f.text)}</div>`).join('')}</div>
+      ${c==='today'||c==='miss'?(h.continuous?'<span class="chip hd-due">Continuous</span>':`<label class="tick"><input type="checkbox" data-act="hdDone" data-id="${p.id}" ${h.done?'checked':''} ${S.ro?'disabled':''}>Done</label>`):c==='unset'?`<button class="btn sm" data-act="open" data-id="${p.id}">Set schedule</button>`:''}
+    </div>`}).join('')}</div>`:`<div class="empty"><span>No haemodialysis patients on the board.</span></div>`;
+  return out;
+}
+
+function hdChip(p){const h=hdInfo(p,S.date);
+  if(h.held)return '<span class="chip hd-hold">HD held</span>';
+  if(!h.due)return '';
+  if(h.continuous)return `<span class="chip hd-due">${esc(p.modality)}</span>`;
+  if(h.done)return '<span class="chip hd-done">HD done</span>';
+  if(h.miss)return '<span class="chip hd-miss">HD not confirmed</span>';
+  return `<span class="chip hd-due">${h.kind==='Extra session'?'Extra HD':'HD today'}</span>`}
+
+function card(p){
+  const n=note(p.id,S.date);
+  const fl=flagLv(p);const lv=fl?' lv-'+fl:'';const of=openFlags(p);
+  const pr=lines(p.primary);const sec=lines(p.secondary);
+  const labs=n&&n.labs?LABS.filter(d=>n.labs[d.k]!==''&&n.labs[d.k]!=null).map(d=>{const lvl=labLevel(d,n.labs[d.k]);return `<span class="${lvl}">${d.l} ${esc(n.labs[d.k])}</span>`}).join(''):'';
+  const h=p.active===false?{}:hdInfo(p,S.date);
+  let band='';
+  if(h.held)band=`<div class="hdband hold">Dialysis held today</div>`;
+  else if(p.active!==false&&!h.due&&(p.modality==='HD'||p.modality==='SLED')&&!(p.hdDays||[]).length)band=`<div class="hdband unset">Dialysis schedule not set</div>`;
+  else if(h.due)band=h.continuous?`<div class="hdband">On ${esc(p.modality)}</div>`:h.done?`<div class="hdband done">Dialysis today · done</div>`:h.miss?`<div class="hdband miss">Dialysis not confirmed</div>`:`<div class="hdband">${h.kind==='Extra session'?'Extra dialysis today':'Dialysis today'}</div>`;
+  const dl=p.modality==='PD'?`<div class="pdrx">PD · ${pdRx(p)}</div>`:((p.modality==='HD'||p.modality==='SLED')&&(p.hdDays||[]).length?`<div class="dline">${esc(p.modality)}${p.access?' · '+esc(p.access):''} ${[6,0,1,2,3,4,5].filter(i=>p.hdDays.includes(i)).map(i=>`<span class="dp on${i===dow(S.date)?' today':''}">${DOW[i]}</span>`).join('')}</div>`:'');
+  return `<button class="card${lv}${h.due&&!h.done?' hdtoday':''}" data-act="open" data-id="${p.id}">${band}
+    <div class="ctop"><span class="bed">${esc(p.bed||'—')}</span><span class="pname">${esc(p.name)}</span>
+      <span class="chips">${p.active===false?'<span class="chip">'+(p.kind==='consult'?'Signed off':'Discharged')+'</span>':''}${p.kind==='consult'?`<span class="chip cons">${esc(p.service||'Consult')}</span>`:''}${p.active===false&&p.dischargedAt?'<span class="chip">'+fmtDate(p.dischargedAt)+'</span>':''}</span></div>
+    ${of.map(f=>`<div class="flagtxt pre ${f.level}">${f.level==='note'?'•':'⚑'} ${esc(f.text)}</div>`).join('')}
+    ${p.plan?`<div class="prob"><span>Plan:</span> ${esc(lines(p.plan).join(' · '))}</div>`:''}
+    ${pr.length?`<div class="prob">${esc(pr.join(' · '))}${sec.length?` <span>· ${sec.length} secondary</span>`:''}</div>`:''}
+    ${labs?`<div class="labline">${labs}</div>`:''}${dl}
+  </button>`}
+
+/* ---------- sheet ---------- */
+function openSheet(id){
+  S.open=id==='new'?{id:null}:S.patients.find(p=>p.id===id);if(!S.open)return;
+  S.hist=[];S.confirmDis=false;S.editNote=null;renderSheet();
+  if(S.open.id)loadHist(S.open.id);
+}
+async function loadHist(pid){
+  try{const snap=await S.db.collection('notes').where('patientId','==',pid).get();
+    if(!S.open||S.open.id!==pid)return;S.hist=snap.docs.map(d=>d.data()).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,15);resolveNames(S.hist.map(h=>h.updatedBy));renderHistOnly()}catch(e){}
+}
+function closeSheet(){if(S.saveT){clearTimeout(S.saveT);S.saveT=null;save(true)}S.open=null;document.getElementById('sheetRoot').innerHTML='';renderMain()}
+
+function renderSheet(){
+  const p=S.open;const isNew=!p.id;
+  const n=isNew?{}:(note(p.id,S.date)||{});
+  const prev=isNew?{}:(note(p.id,shift(S.date,-1))||lastHistBefore()||{});
+  const days=p.hdDays||[];
+  const dis=S.ro?'disabled':'';
+  const labInputs=LABS.map(d=>{const v=n.labs&&n.labs[d.k]!=null?n.labs[d.k]:'';const pv=prev.labs&&prev.labs[d.k]!=null&&prev.labs[d.k]!==''?prev.labs[d.k]:'';
+    return `<label class="lab ${labLevel(d,v)}" data-lab="${d.k}">${d.l} <input id="lab_${d.k}" inputmode="decimal" value="${esc(v)}" ${dis}><small>${pv!==''?'prev '+esc(pv):d.u}</small></label>`}).join('');
+  const lvl=n.flagLevel||'none';const hp=n.hdPlan||'auto';
+  const sched=isNew?null:hdInfo(p,S.date);
+  document.getElementById('sheetRoot').innerHTML=`<div class="sheet" role="dialog" aria-label="Patient">
+   <div class="shead"><div class="wrap"><button class="btn sm" data-act="close">‹ Back</button><div class="t">${isNew?'New patient':esc((p.bed?p.bed+' · ':'')+p.name)}</div>${isNew?'':`<span class="mrn">${fmtDate(S.date)}</span>`}</div></div>
+   <div class="wrap sbody">
+    ${S.ro?'<div class="ro">View only. Ask the owner for Contributor access to edit.</div>':''}
+    ${isNew?'':`<section class="sec"><h3>Notes · kept until done or removed</h3><div id="flagBox">${flagsBox(p)}</div></section>`}
+    <section class="sec"><h3>Plan · kept until changed</h3><label class="f"><span class="hint">One action per line</span><textarea id="p_plan" rows="4" placeholder="e.g. Continue IV furosemide 80 mg BD&#10;Repeat RFT and K tomorrow" ${dis}>${esc(p.plan||'')}</textarea></label></section>
+    ${isNew?'':`<section class="sec"><h3>${S.date===todayStr()?'Today':fmtDate(S.date)} · labs and dialysis</h3>
+      <div><div class="hint" style="margin-bottom:6px">Labs${prev.date?' · grey value is from '+fmtDate(prev.date):''}</div><div class="labs">${labInputs}</div></div>
+      <label class="f">Other labs / imaging<input id="labOther" value="${esc(n.labOther||'')}" placeholder="e.g. Urine PCR 3.2 g/g, US: normal-sized kidneys" ${dis}></label>
+      <div><div class="hint" style="margin-bottom:6px">Dialysis for this day ${sched?'· '+(sched.scheduled?'scheduled day':sched.continuous?'continuous therapy':'not a scheduled day'):''}</div>
+       <div class="seg" role="radiogroup"><label><input type="radio" name="hdp" value="auto" ${hp==='auto'?'checked':''} ${dis}><span>Per schedule</span></label><label><input type="radio" name="hdp" value="extra" ${hp==='extra'?'checked':''} ${dis}><span>Extra session</span></label><label class="a"><input type="radio" name="hdp" value="hold" ${hp==='hold'?'checked':''} ${dis}><span>Hold</span></label></div></div>
+      <div class="grid2"><label class="f">Dialysis note (UF goal, reason held…)<input id="hdNote" value="${esc(n.hdNote||'')}" ${dis}></label>
+       <label class="tick" style="align-self:end;width:fit-content"><input type="checkbox" id="hdDone" ${n.hdDone?'checked':''} ${dis}>Session done</label></div>
+      ${n.updatedBy?`<p class="hint">Last saved by ${esc(n.updatedByName||nameOf(n.updatedBy))}</p>`:''}
+    </section>`}
+    <section class="sec"><h3>Patient</h3>
+      <div class="grid2">
+       <label class="f">Name<input id="p_name" value="${esc(p.name||'')}" ${dis}></label>
+       <label class="f">Bed / ward<input id="p_bed" value="${esc(p.bed||'')}" placeholder="e.g. 4B-12" ${dis}></label>
+       <label class="f">Type<select id="p_kind" ${dis}><option value="inpatient" ${p.kind!=='consult'?'selected':''}>Inpatient (under our care)</option><option value="consult" ${p.kind==='consult'?'selected':''}>Consult</option></select></label>
+       <label class="f" id="svcWrap" ${p.kind==='consult'?'':'hidden'}>Consulting service<input id="p_service" value="${esc(p.service||'')}" placeholder="e.g. Cardiology, ICU" ${dis}></label>
+      </div>
+    </section>
+    <section class="sec"><h3>Problem list</h3>
+      <label class="f">Primary problems<textarea id="p_primary" rows="3" placeholder="One per line, e.g. AKI on CKD G4 — prerenal vs ATN" ${dis}>${esc(p.primary||'')}</textarea></label>
+      <label class="f">Secondary problems<textarea id="p_secondary" rows="3" placeholder="One per line, e.g. T2DM, HTN, anaemia of CKD" ${dis}>${esc(p.secondary||'')}</textarea></label>
+    </section>
+    <section class="sec"><h3>Dialysis setup</h3>
+      <div class="grid2">
+       <label class="f">Modality<select id="p_mod" ${dis}>${Object.entries(MOD).map(([k,l])=>`<option value="${k}" ${(p.modality||'none')===k?'selected':''}>${l}</option>`).join('')}</select></label>
+       <label class="f">Access<input id="p_access" value="${esc(p.access||'')}" placeholder="e.g. L AVF, R IJ tunnelled catheter" ${dis}></label>
+      </div>
+      <div id="hdBlock" ${p.modality==='PD'?'hidden':''}><div class="hint" style="margin-bottom:6px">HD days · ${DOW[dow(S.date)]} is outlined</div><div class="days">${[6,0,1,2,3,4,5].map(i=>`<label class="${i===dow(S.date)?'today':''}"><input type="checkbox" name="hdday" value="${i}" ${days.includes(i)?'checked':''} ${dis}><span>${DOW[i]}</span></label>`).join('')}</div>
+       <div class="bar" style="margin-top:8px"><button class="btn sm" data-act="preset" data-v="6,1,3" ${dis}>Sat · Mon · Wed</button><button class="btn sm" data-act="preset" data-v="0,2,4" ${dis}>Sun · Tue · Thu</button><button class="btn sm" data-act="preset" data-v="" ${dis}>Clear</button></div></div>
+      <div id="pdBlock" class="grid2" style="grid-template-columns:1fr" ${p.modality==='PD'?'':'hidden'}>
+       <label class="f">PD frequency<select id="pd_freq" ${dis}><option value="">Choose…</option>${Object.entries(PDF).map(([k,l])=>`<option value="${k}" ${(p.pd&&p.pd.freq)===k?'selected':''}>${l}</option>`).join('')}</select></label>
+       <div><div class="hint" style="margin-bottom:6px">Bag colour for each exchange</div><div class="slots" id="slots">${slotsHtml((p.pd||{}).freq,(p.pd||{}).bags||[],dis)}</div></div>
+       <label class="f">PD note<input id="pd_note" value="${esc((p.pd||{}).note||'')}" placeholder="e.g. 2 L fills, last bag at 22:00" ${dis}></label>
+      </div>
+    </section>
+    ${isNew?'':`<section class="sec"><h3>Previous days</h3><div class="hist" id="hist"><p class="hint">Loading…</p></div></section>
+    ${S.ro?'':`<section class="sec"><h3>${p.active===false?'In archive':(p.kind==='consult'?'Sign off':'Discharge')}</h3><div class="confirm" id="disBox">${disBox(p)}</div></section>`}`}
+   </div>
+   ${S.ro?'':`<div class="savebar"><div class="wrap"><span class="msg" id="saveMsg">${isNew?'Fill in name and bed, then add.':'Changes save automatically.'}</span>${isNew?'<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save">Add patient</button>':'<button class="btn primary" data-act="close">Done</button>'}</div></div>`}
+  </div>`;
+  if(!isNew)renderHistOnly();
+}
+function flagsBox(p){
+  const all=p.flags||[];const open=all.filter(f=>!f.done);const closed=all.filter(f=>f.done).slice(-5).reverse();
+  const lvSeg=(name,cur)=>`<div class="seg" role="radiogroup"><label><input type="radio" name="${name}" value="note" ${cur==='note'?'checked':''}><span>Note</span></label><label class="a"><input type="radio" name="${name}" value="amber" ${cur==='amber'?'checked':''}><span>Watch</span></label><label class="r"><input type="radio" name="${name}" value="red" ${cur==='red'?'checked':''}><span>Urgent</span></label></div>`;
+  const row=f=>{
+    if(S.editNote===f.id&&!S.ro)return `<div class="fitem ${f.level}"><input id="editNoteTxt" class="search" value="${esc(f.text)}" aria-label="Edit note">${lvSeg('efl',f.level)}<button class="btn sm primary" data-act="noteSave" data-f="${f.id}">Save</button><button class="btn sm" data-act="noteCancel">Cancel</button></div>`;
+    return `<div class="fitem ${f.done?'closed':f.level}"><span class="ft">${f.level==='note'?'•':'⚑'} ${esc(f.text)}</span><span class="fm">${f.done?'done '+fmtDate(f.doneAt):'since '+fmtDate(f.created)}</span>${S.ro?'':(f.done?`<button class="btn sm" data-act="flagReopen" data-f="${f.id}">Reopen</button>`:`<button class="btn sm" data-act="noteEdit" data-f="${f.id}">Edit</button><button class="btn sm primary" data-act="flagDone" data-f="${f.id}">Done</button>`)}<button class="btn sm danger" data-act="noteDel" data-f="${f.id}" ${S.ro?'hidden':''}>Remove</button></div>`};
+  return `<div class="flags">${open.length?open.map(row).join(''):'<p class="hint">No open notes.</p>'}
+  ${S.ro?'':`<div class="fadd"><input id="newFlag" placeholder="e.g. Repeat K at 14:00, ECG" aria-label="New note">${lvSeg('nfl','note')}<button class="btn sm primary" data-act="flagAdd">Add note</button></div>`}
+  ${closed.length?`<div class="hint">Recently done</div>${closed.map(row).join('')}`:''}</div>`}
+async function saveFlags(flags,msg){
+  try{await S.db.doc('patients/'+S.open.id).update({flags,flagsUpdatedByName:S.myName||null});S.open={...S.open,flags};S.editNote=null;document.getElementById('flagBox').innerHTML=flagsBox(S.open);toast(msg)}
+  catch(e){toast('Could not update the note. Check your access.')}
+}
+function disBox(p){
+  if(p.active===false)return `<span class="hint">${p.kind==='consult'?'Signed off':'Discharged'}${p.dischargedAt?' '+fmtDate(p.dischargedAt):''}.</span><button class="btn sm" data-act="reactivate">Readmit / move back to active list</button>`;
+  return S.confirmDis?`<span>${p.kind==='consult'?'Sign off':'Discharge'} ${esc(p.name)}? They move to the Archive with all notes.</span><button class="btn sm danger" data-act="discharge">Yes, ${p.kind==='consult'?'sign off':'discharge'}</button><button class="btn sm" data-act="disCancel">No</button>`
+  :`<button class="btn sm danger" data-act="disAsk">${p.kind==='consult'?'Sign off consult':'Discharge patient'}</button>`}
+function lastHistBefore(){return S.hist.find(h=>h.date<S.date)||null}
+function renderHistOnly(){
+  const el=document.getElementById('hist');if(!el)return;
+  const items=S.hist.filter(h=>h.date!==S.date);
+  el.innerHTML=items.length?items.map(h=>{
+    const labs=h.labs?LABS.filter(d=>h.labs[d.k]!==''&&h.labs[d.k]!=null).map(d=>`<span class="${labLevel(d,h.labs[d.k])}">${d.l} ${esc(h.labs[d.k])}</span>`).join(''):'';
+    return `<div class="hitem"><div class="hd"><b>${fmtDate(h.date)}</b>${h.hdDone?'<span class="chip hd-done">HD done</span>':''}${h.hdPlan==='hold'?'<span class="chip hd-hold">HD held</span>':''}<a href="#" data-act="goDate" data-v="${h.date}">Open day</a></div>
+    ${h.flag?`<div class="flagtxt pre" style="color:${h.flagLevel==='red'?'var(--red)':h.flagLevel==='amber'?'var(--amber)':'inherit'}">⚑ ${esc(h.flag)}</div>`:''}
+    ${labs?`<div class="labline">${labs}</div>`:''}${h.plan?`<div class="pre">${esc(h.plan)}</div>`:''}</div>`}).join(''):'<p class="hint">No earlier entries.</p>';
+  // refresh "prev" hints if history arrived after render and yesterday note missing
+}
+
+function val(id){const e=document.getElementById(id);return e?e.value.trim():''}
+function queueSave(ms){if(!S.open||!S.open.id||S.ro)return;clearTimeout(S.saveT);const m=document.getElementById('saveMsg');if(m){m.textContent='Saving…';m.style.color=''}S.saveT=setTimeout(()=>{S.saveT=null;save(true)},ms)}
+async function save(auto){
+  const p=S.open;if(!p)return;const isNew=!p.id;const msg=document.getElementById('saveMsg')||{style:{}};
+  const name=val('p_name');if(!name){msg.textContent='Enter the patient name first.';msg.style.color='var(--red)';return}
+  const pd={name,bed:val('p_bed'),kind:val('p_kind'),service:val('p_kind')==='consult'?val('p_service'):'',
+    primary:document.getElementById('p_primary').value,plan:document.getElementById('p_plan').value,secondary:document.getElementById('p_secondary').value,
+    modality:val('p_mod'),access:val('p_access'),
+    pd:val('p_mod')==='PD'?{freq:val('pd_freq'),bags:Array.from({length:pdSlotsN(val('pd_freq'))},(_,i)=>(document.querySelector('input[name=bag'+i+']:checked')||{}).value||''),note:val('pd_note')}:(p.pd||null),hdDays:[...document.querySelectorAll('input[name=hdday]:checked')].map(i=>+i.value).sort()};
+  let nd=null;
+  if(!isNew){const labs={};LABS.forEach(d=>{const v=val('lab_'+d.k);if(v!=='')labs[d.k]=v});
+    nd={patientId:p.id,date:S.date,labs,labOther:val('labOther'),
+      hdPlan:(document.querySelector('input[name=hdp]:checked')||{}).value||'auto',hdNote:val('hdNote'),hdDone:!!(document.getElementById('hdDone')||{}).checked,
+      updatedBy:S.uid||null,updatedByName:S.myName||null,updatedAt:new Date().toISOString()}}
+  if(S.saving){S.resave=true;return}
+  S.saving=true;msg.textContent='Saving…';msg.style.color='';
+  try{
+    if(isNew){const ref=S.db.collection('patients').doc();await ref.set({...pd,flags:[],active:true,createdAt:new Date().toISOString(),createdBy:S.uid||null});
+      toast('Patient added');S.open=null;document.getElementById('sheetRoot').innerHTML='';S.tab=pd.kind==='consult'?'consult':'inpatient';renderMain();return}
+    const changed=Object.keys(pd).some(k=>JSON.stringify(pd[k]??'')!==JSON.stringify(p[k]??''));
+    if(changed)await S.db.doc('patients/'+p.id).update(pd);
+    const old=note(p.id,S.date)||{};
+    const noteChanged=['labs','labOther','hdPlan','hdNote','hdDone'].some(k=>JSON.stringify(nd[k]??'')!==JSON.stringify(old[k]??(k==='labs'?{}:k==='hdPlan'?'auto':k==='hdDone'?false:'')));
+    if(noteChanged)await S.db.doc('notes/'+nkey(p.id,S.date)).set(nd);
+    msg.textContent='Saved '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }catch(e){msg.style.color='var(--red)';msg.textContent=e&&(e.code==='invalid_argument'||e.code==='permission-denied')?'You do not have edit access to this board.':(e&&(e.code==='quota_exceeded'||e.code==='resource-exhausted')?'Storage is full. Remove old discharged patients and try again.':'Not saved. Check your connection; it will retry on your next change.')}
+  finally{S.saving=false;if(S.resave){S.resave=false;if(S.open)save(true)}}
+}
+async function setHdDone(pid,done){
+  const ref=S.db.doc('notes/'+nkey(pid,S.date));const ex=note(pid,S.date);
+  try{if(ex)await ref.update({hdDone:done,updatedBy:S.uid||null,updatedByName:S.myName||null,updatedAt:new Date().toISOString()});
+    else await ref.set({patientId:pid,date:S.date,labs:{},hdPlan:'auto',hdNote:'',hdDone:done,updatedBy:S.uid||null,updatedByName:S.myName||null,updatedAt:new Date().toISOString()});
+    toast(done?'Marked done':'Marked not done')}catch(e){toast('Could not update. Check your access.');renderMain()}
+}
+async function setActive(on){
+  try{await S.db.doc('patients/'+S.open.id).update({active:on,dischargedAt:on?null:S.date});toast(on?'Back on active list':(S.open.kind==='consult'?'Consult signed off':'Patient discharged'));closeSheet()}catch(e){toast('Could not update. Check your access.')}
+}
+
+function roundText(){
+  const act=active();const out=['Nephrology round · '+fmtDate(S.date)];if(S.team.attending)out.push('Attending: '+S.team.attending);if(S.team.fellow)out.push('Fellow: '+S.team.fellow);out.push('');
+  const due=act.filter(p=>hdInfo(p,S.date).due);
+  out.push('DIALYSIS ('+due.length+')');due.forEach(p=>{const h=hdInfo(p,S.date);out.push('- '+(p.bed||'')+' '+p.name+' · '+(p.modality==='PD'?'PD '+((p.pd||{}).freq==='APD'?'APD nightly':((p.pd||{}).freq||'?')+'×/day')+' ['+((p.pd||{}).bags||[]).join(', ')+']':h.kind)+(h.done?' ✔':''))});
+  [['INPATIENTS',a=>a.kind!=='consult'],['CONSULTS',a=>a.kind==='consult']].forEach(([t,f])=>{
+    const ps=act.filter(f);out.push('',t+' ('+ps.length+')');
+    ps.forEach(p=>{const n=note(p.id,S.date)||{};out.push('• '+(p.bed||'')+' '+p.name+(p.kind==='consult'&&p.service?' — '+p.service:''));
+      const pr=lines(p.primary);if(pr.length)out.push('  Dx: '+pr.join('; '));
+      openFlags(p).forEach(f=>out.push('  '+(f.level==='red'?'⚑ URGENT: ':f.level==='amber'?'⚑ ':'• ')+f.text));
+      const l=n.labs?LABS.filter(d=>n.labs[d.k]).map(d=>d.l+' '+n.labs[d.k]).join(', '):'';if(l)out.push('  Labs: '+l);
+      lines(p.plan).forEach(x=>out.push('  - '+x))})});
+  return out.join('\n');
+}
+
+function toast(t){const r=document.getElementById('toastRoot');r.innerHTML=`<div class="toast" role="status">${esc(t)}</div>`;clearTimeout(toast._t);toast._t=setTimeout(()=>r.innerHTML='',2200)}
+function nameOf(id){return S.names[id]||'a team member'}
+async function resolveNames(ids){
+  if(!S.user||!S.user.profiles)return;ids=[...new Set(ids.filter(Boolean))].filter(i=>!(i in S.names));if(!ids.length)return;
+  try{const ps=await S.user.profiles(ids);ids.forEach(i=>{S.names[i]=(ps&&ps[i]&&ps[i].name)||'a team member'})}catch(e){}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;const a=t.dataset.act;
+  if(a==='hdDone')return; // handled on change
+  if(t.tagName==='A'||t.tagName==='BUTTON')e.preventDefault();
+  if(a==='tab'){S.tab=t.dataset.v;renderMain()}
+  else if(a==='prev'||a==='next'||a==='today'){S.date=a==='today'?todayStr():shift(S.date,a==='prev'?-1:1);subNotes();renderMain()}
+  else if(a==='open')openSheet(t.dataset.id);
+  else if(a==='add')openSheet('new');
+  else if(a==='team'){const pn=document.getElementById('teamPanel');pn.hidden=!pn.hidden;if(!pn.hidden){
+      document.getElementById('team_att').value=S.team.attending||S.lastTeam.attending||'';document.getElementById('team_fel').value=S.team.fellow||S.lastTeam.fellow||'';document.getElementById('team_att').focus()}}
+  else if(a==='teamClose'){document.getElementById('teamPanel').hidden=true}
+  else if(a==='close')closeSheet();
+  else if(a==='save')save();
+  else if(a==='preset'){const v=t.dataset.v?t.dataset.v.split(',').map(Number):[];document.querySelectorAll('input[name=hdday]').forEach(i=>i.checked=v.includes(+i.value));
+    const mod=document.getElementById('p_mod');if(v.length&&mod.value==='none')mod.value='HD';queueSave(250)}
+  else if(a==='flagAdd'){const inp=document.getElementById('newFlag');const text=inp.value.trim();if(!text){inp.focus();return}
+    const level=(document.querySelector('input[name=nfl]:checked')||{}).value||'note';
+    saveFlags([...(S.open.flags||[]),{id:Date.now().toString(36),text,level,done:false,created:S.date,createdBy:S.uid||null}],'Note added')}
+  else if(a==='flagDone'||a==='flagReopen'){const d=a==='flagDone';
+    saveFlags((S.open.flags||[]).map(f=>f.id===t.dataset.f?{...f,done:d,doneAt:d?todayStr():null,doneBy:d?(S.uid||null):null}:f),d?'Note marked done':'Note reopened')}
+  else if(a==='noteEdit'){S.editNote=t.dataset.f;document.getElementById('flagBox').innerHTML=flagsBox(S.open);const i=document.getElementById('editNoteTxt');if(i)i.focus()}
+  else if(a==='noteCancel'){S.editNote=null;document.getElementById('flagBox').innerHTML=flagsBox(S.open)}
+  else if(a==='noteSave'){const text=val('editNoteTxt');if(!text)return;const level=(document.querySelector('input[name=efl]:checked')||{}).value||'note';saveFlags((S.open.flags||[]).map(f=>f.id===t.dataset.f?{...f,text,level}:f),'Note updated')}
+  else if(a==='noteDel'){saveFlags((S.open.flags||[]).filter(f=>f.id!==t.dataset.f),'Note removed')}
+  else if(a==='disAsk'){S.confirmDis=true;document.getElementById('disBox').innerHTML=disBox(S.open)}
+  else if(a==='disCancel'){S.confirmDis=false;document.getElementById('disBox').innerHTML=disBox(S.open)}
+  else if(a==='discharge')setActive(false);
+  else if(a==='reactivate')setActive(true);
+  else if(a==='goDate'){S.date=t.dataset.v;subNotes();const id=S.open.id;closeSheet();setTimeout(()=>openSheet(id),300)}
+  else if(a==='copy'){const txt=roundText();
+    try{navigator.clipboard.writeText(txt).then(()=>toast('Round list copied'),()=>showCopy(txt))}catch(err){showCopy(txt)}}
+});
+document.getElementById('teamPanel').addEventListener('submit',async e=>{e.preventDefault();
+  if(!S.db||S.ro){toast('You do not have edit access.');return}
+  const d={attending:val('team_att'),fellow:val('team_fel'),date:S.date,updatedBy:S.uid||null,updatedByName:S.myName||null};
+  try{await S.db.doc('team/'+S.date).set(d);S.lastTeam=d;try{localStorage.setItem('lastTeam',JSON.stringify(d))}catch(_){}document.getElementById('teamPanel').hidden=true;toast('Team saved for '+fmtDate(S.date))}
+  catch(err){toast(err&&err.code==='permission-denied'?'You do not have edit access.':'Could not save. Check your access.')}});
+try{S.lastTeam=JSON.parse(localStorage.getItem('lastTeam')||'{}')||{}}catch(_){}
+document.addEventListener('change',e=>{if(autoTarget(e.target)&&(e.target.type==='radio'||e.target.type==='checkbox'||e.target.tagName==='SELECT'))setTimeout(()=>queueSave(250),0);
+  const t=e.target;
+  if(t.id==='p_mod'){const pd=t.value==='PD';const a=document.getElementById('hdBlock'),b=document.getElementById('pdBlock');if(a)a.hidden=pd;if(b)b.hidden=!pd}
+  if(t.id==='pd_freq'){const cur=Array.from({length:6},(_,i)=>(document.querySelector('input[name=bag'+i+']:checked')||{}).value||'');document.getElementById('slots').innerHTML=slotsHtml(t.value,cur,'')}
+  if(t.id==='p_kind'){const w=document.getElementById('svcWrap');if(w)w.hidden=t.value!=='consult'}if(t.dataset&&t.dataset.act==='hdDone')setHdDone(t.dataset.id,t.checked);
+});
+const NOAUTO=new Set(['newFlag','editNoteTxt','q','team_att','team_fel']);
+function autoTarget(t){return S.open&&S.open.id&&t.closest&&t.closest('.sheet')&&!NOAUTO.has(t.id)&&!['nfl','efl'].includes(t.name)}
+document.addEventListener('input',e=>{if(autoTarget(e.target)&&e.target.type!=='radio'&&e.target.type!=='checkbox'&&e.target.tagName!=='SELECT')queueSave(900);
+  if(e.target.id==='q'){S.q=e.target.value;renderMain()}
+  const lab=e.target.closest&&e.target.closest('.lab');if(lab){const d=LABS.find(x=>x.k===lab.dataset.lab);lab.className='lab '+labLevel(d,e.target.value)}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='editNoteTxt'){e.preventDefault();document.querySelector('[data-act=noteSave]').click();return}if(e.key==='Enter'&&e.target.id==='newFlag'){e.preventDefault();document.querySelector('[data-act=flagAdd]').click();return}if(e.key==='Escape'&&S.open)closeSheet()});
+function showCopy(txt){const r=document.getElementById('main');const ta=document.createElement('textarea');ta.value=txt;ta.rows=10;ta.style.width='100%';ta.setAttribute('aria-label','Round list text');r.prepend(ta);ta.select();toast('Select all and copy the text above')}
+
+/* ---------- data ---------- */
+function subNotes(){
+  if(!S.db)return;if(S.unsubNotes)S.unsubNotes();
+  if(S.unsubTeam)S.unsubTeam();S.team={};
+  S.unsubTeam=S.db.doc('team/'+S.date).onSnapshot(d=>{S.team=d.exists?d.data():{};renderHeader()},()=>{});
+  const ds=[S.date,shift(S.date,-1)];
+  S.unsubNotes=S.db.collection('notes').where('date','in',ds).onSnapshot(snap=>{
+    const m={};snap.docs.forEach(d=>{m[d.id]=d.data()});S.notes=m;
+    resolveNames(Object.values(m).map(n=>n.updatedBy));
+    if(!S.open)renderMain();else renderHeader();
+  },()=>{});
+}
+async function start(){
+  try{S.user=await window.claude.use('user')}catch(e){}
+  try{S.db=await window.claude.use('db')}catch(e){}
+  S.myName=window.RRB_ME?window.RRB_ME():null;
+  if(S.user){try{S.uid=await S.user.id()}catch(e){}
+    try{const c=await S.user.can('data.write');if(c===false)S.ro=true}catch(e){}}
+  if(!S.db){S.pLoaded=true;renderMain();return}
+  S.db.collection('patients').onSnapshot(snap=>{
+    S.patients=snap.docs.map(d=>({id:d.id,...d.data()}));S.pLoaded=true;
+    if(S.open&&S.open.id){const fresh=S.patients.find(p=>p.id===S.open.id);if(fresh){S.open=fresh;const fb=document.getElementById('flagBox');if(fb&&!S.editNote&&!(document.activeElement&&document.activeElement.id==='newFlag'))fb.innerHTML=flagsBox(fresh)}}
+    if(!S.open)renderMain();else renderHeader();
+  },e=>{S.pLoaded=true;S.denied=!!(e&&(e.code==='permission-denied'||e.code==='revoked'));renderMain()});
+  subNotes();
+}
+renderHeader();
+if(window.claude&&window.claude.use)start();else{S.pLoaded=true;renderMain()}
+})();
+</script>
+
+</body>
+</html>
